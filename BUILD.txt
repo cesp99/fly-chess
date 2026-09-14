@@ -1,0 +1,1 @@
+flychess 3c83567 model=remote exported_at=https://huggingface.co/cesp99/fly-chess/resolve/main/web/

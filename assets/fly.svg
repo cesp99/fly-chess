@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class="fly" aria-hidden="true">
+  <!-- Drosophila, top view. Own artwork. Wing pivot: (100,96). Classes are hooks for style.css moods. -->
+  <g class="fly-legs" fill="none" stroke="#6b4a15" stroke-width="3" stroke-linecap="round">
+    <path d="M82 92 C64 84 52 74 44 58"/><path d="M118 92 C136 84 148 74 156 58"/>
+    <path d="M80 102 C58 104 44 110 34 124"/><path d="M120 102 C142 104 156 110 166 124"/>
+    <path d="M84 112 C70 128 62 142 60 160"/><path d="M116 112 C130 128 138 142 140 160"/>
+  </g>
+  <g class="fly-wings" fill="#dbe7f3" fill-opacity=".22" stroke="#dbe7f3" stroke-opacity=".45" stroke-width="2">
+    <ellipse class="wing wing-l" cx="100" cy="146" rx="17" ry="50" transform="rotate(34 100 96)"/>
+    <ellipse class="wing wing-r" cx="100" cy="146" rx="17" ry="50" transform="rotate(-34 100 96)"/>
+  </g>
+  <g class="fly-body">
+    <ellipse class="abdomen" cx="100" cy="142" rx="26" ry="38" fill="#d9a441"/>
+    <clipPath id="fly-abd"><ellipse cx="100" cy="142" rx="26" ry="38"/></clipPath>
+    <g clip-path="url(#fly-abd)" fill="#3a2610">
+      <rect x="70" y="128" width="60" height="7"/><rect x="70" y="142" width="60" height="7"/>
+      <rect x="70" y="156" width="60" height="7"/><rect x="70" y="170" width="60" height="12"/>
+    </g>
+    <ellipse class="thorax" cx="100" cy="98" rx="25" ry="27" fill="#c48a2b"/>
+    <path d="M84 84 Q100 76 116 84" fill="none" stroke="#3a2610" stroke-width="2.5" opacity=".5"/>
+    <circle class="head" cx="100" cy="58" r="19" fill="#c48a2b"/>
+    <g class="fly-antennae" stroke="#3a2610" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <path d="M94 42 C90 34 84 30 76 30"/><path d="M106 42 C110 34 116 30 124 30"/>
+    </g>
+    <g class="fly-eyes">
+      <ellipse class="eye eye-l" cx="86" cy="56" rx="10" ry="13" fill="#d5382a"/>
+      <ellipse class="eye eye-r" cx="114" cy="56" rx="10" ry="13" fill="#d5382a"/>
+      <circle class="pupil pupil-l" cx="87" cy="52" r="3.2" fill="#2a0a06"/>
+      <circle class="pupil pupil-r" cx="115" cy="52" r="3.2" fill="#2a0a06"/>
+      <circle cx="90" cy="49" r="1.8" fill="#ffd9c4" opacity=".9"/><circle cx="118" cy="49" r="1.8" fill="#ffd9c4" opacity=".9"/>
+      <rect class="lid lid-l" x="75" y="38" width="22" height="0" rx="4" fill="#c48a2b"/>
+      <rect class="lid lid-r" x="103" y="38" width="22" height="0" rx="4" fill="#c48a2b"/>
+    </g>
+    <path class="mouth" d="M94 72 Q100 75 106 72" fill="none" stroke="#3a2610" stroke-width="2.5" stroke-linecap="round"/>
+    <g class="sweat" opacity="0"><path d="M132 46 q5 8 0 12 q-5 -4 0 -12z" fill="#9fd8ff"/></g>
+  </g>
+</svg>

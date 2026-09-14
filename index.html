@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Play chess against a fruit fly brain</title>
+  <meta name="fly-model-base" content="https://huggingface.co/cesp99/fly-chess/resolve/main/web/">
+  <meta name="description" content="A chess player whose neurons and synapses are the real FlyWire Drosophila connectome, running in your browser.">
+  <meta name="theme-color" content="#0e100b">
+  <link rel="icon" href="assets/fly.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#" id="brand"><span class="brand-fly" aria-hidden="true"></span><span>fly<em>chess</em></span></a>
+  <div class="specimen mono" id="specimen" title="the network you are playing">specimen <b id="spec-name">—</b> · <span id="spec-neurons">—</span> neurons · <span id="spec-synapses">—</span> connections<span id="spec-eyes" hidden> · eyes: <b id="spec-eyes-n">—</b> photoreceptors</span> · engine <b id="spec-engine">—</b></div>
+  <nav class="topbar-actions">
+    <button class="btn btn-ghost" id="btn-leaderboard" type="button"><span class="full">leaderboard</span><span class="short">scores</span></button>
+    <button class="btn btn-ghost" id="btn-party" type="button"><span class="full">party mode</span><span class="short">party</span></button>
+    <button class="btn btn-ghost" id="btn-about" type="button"><span class="full">how it works</span><span class="short">about</span></button>
+    <button class="btn btn-ghost btn-icon" id="btn-sound" type="button" aria-pressed="false" title="sound">
+      <span class="snd-on" hidden>♪ on</span><span class="snd-off">♪ off</span>
+    </button>
+  </nav>
+</header>
+
+<!-- ============================== landing ============================== -->
+<section class="screen landing" id="screen-landing">
+  <div class="hero">
+    <div class="hero-fly" id="hero-fly" aria-hidden="true"></div>
+    <div class="hero-text">
+      <p class="eyebrow mono">Drosophila melanogaster · behavioural assay 01</p>
+      <h1>Play chess against a <span class="ital">fruit fly</span> brain</h1>
+      <p class="lede">
+        The player is a recurrent neural network whose neurons and synapses are the
+        <a href="https://flywire.ai" rel="noopener">FlyWire</a> connectome of an adult fruit fly:
+        <b id="lede-neurons">~134,000</b> neurons and <b id="lede-synapses">~2.7 million</b> neuron-to-neuron connections (<span id="lede-connections-note">34 million synapses in</span> the wiring diagram), wired exactly as in the animal.
+        Only the synaptic strengths were trained. It is not a chess engine. It is a fly.
+      </p>
+      <p class="lede lede-eyes" id="lede-eyes" hidden></p>
+      <ul class="facts mono">
+        <li>every connection exists in the real fly (≥ 5 synapses between the pair)</li>
+        <li>excitatory / inhibitory signs from real neurotransmitters</li>
+        <li>runs entirely in your browser</li>
+        <li id="fact-eyes" hidden>it looks at the board through its compound eyes</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="setup card" id="setup">
+    <div class="setup-row">
+      <h2 class="setup-title">Choose your opponent</h2>
+      <div class="difficulty" role="radiogroup" aria-label="difficulty">
+        <label class="diff"><input type="radio" name="difficulty" value="larva">
+          <span class="diff-name">Larva</span>
+          <span class="diff-desc">Instinct only. Samples a move from the policy head, temperature 1.2. Playful, erratic.</span>
+        </label>
+        <label class="diff"><input type="radio" name="difficulty" value="fly" checked>
+          <span class="diff-name">Fly</span>
+          <span class="diff-desc">The fly's favourite move, sanity-checked one ply ahead with its own value head.</span>
+        </label>
+        <label class="diff"><input type="radio" name="difficulty" value="superfly">
+          <span class="diff-name">Superfly</span>
+          <span class="diff-desc">Same brain plus tree search: up to 400 simulations per move with WebGPU (40 without). Slower and meaner.</span>
+        </label>
+      </div>
+    </div>
+    <div class="setup-row setup-inline">
+      <div class="field">
+        <span class="field-label">You play</span>
+        <div class="seg" role="radiogroup" aria-label="colour">
+          <label><input type="radio" name="color" value="white" checked><span>White</span></label>
+          <label><input type="radio" name="color" value="black"><span>Black</span></label>
+          <label><input type="radio" name="color" value="random"><span>Random</span></label>
+        </div>
+      </div>
+      <label class="field">
+        <span class="field-label">Your name <span class="dim">(for the leaderboard)</span></span>
+        <input class="input" id="player-name" type="text" maxlength="24" placeholder="Human" autocomplete="nickname">
+      </label>
+    </div>
+    <div class="setup-row setup-go">
+      <button class="btn btn-primary btn-big" id="btn-start" type="button" disabled>
+        <span class="btn-start-label">Growing the fly brain…</span>
+      </button>
+      <div class="loading" id="loading" aria-live="polite">
+        <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+        <div class="loading-meta mono">
+          <span id="load-bytes">connecting…</span>
+          <span id="load-neurons"><b>0</b> neurons</span>
+        </div>
+      </div>
+      <p class="load-error" id="load-error" hidden></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== game ============================== -->
+<main class="screen game" id="screen-game" hidden>
+  <aside class="panel fly-panel">
+    <div class="avatar-wrap" id="avatar-wrap" data-mood="thinking">
+      <div class="avatar" id="avatar"></div>
+      <div class="mood mono" id="mood-label">thinking</div>
+    </div>
+    <p class="commentary" id="commentary">The fly is watching the board.</p>
+    <div class="valuebar" title="value head: how the fly rates its own position">
+      <span class="mono dim">panic</span>
+      <div class="valuebar-track"><div class="valuebar-fill" id="value-fill"></div></div>
+      <span class="mono dim">smug</span>
+    </div>
+    <div class="eye" id="eye-panel">
+      <div class="eye-head mono">
+        <span class="eye-title">fly's eye</span>
+        <span class="eye-toggle" role="group" aria-label="eye view">
+          <button type="button" class="eye-mode" data-eye-mode="sees" aria-pressed="true" title="each photoreceptor coloured by the square it watches">sees</button>
+          <button type="button" class="eye-mode" data-eye-mode="feels" aria-pressed="false" title="each photoreceptor by the input current it receives from the board (its learned tuning)">feels</button>
+        </span>
+      </div>
+      <div class="eye-view">
+        <canvas id="eye-canvas" aria-label="the fly's two compound eyes, each photoreceptor coloured by the board square it looks at"></canvas>
+        <div class="eye-tip mono" hidden></div>
+      </div>
+      <p class="eye-caption mono"></p>
+      <p class="eye-note mono"></p>
+    </div>
+    <div class="brainviz">
+      <canvas id="brain-canvas" aria-label="live neuron activity of the fly brain"></canvas>
+      <div class="replay mono" id="replay" hidden>
+        <button class="replay-btn" id="replay-play" type="button" aria-label="replay the fly's thought" title="replay the 16 recurrent timesteps">▶</button>
+        <input class="replay-scrub" id="replay-scrub" type="range" min="0" max="15" step="0.01" value="15" aria-label="timestep">
+        <span class="replay-step" id="replay-step">step 16 / 16</span>
+        <button class="btn btn-ghost btn-tiny" id="replay-look" type="button" title="ask the network to look at the current position again and replay its thought">look again</button>
+      </div>
+      <canvas class="strip-canvas" id="strip-canvas" aria-label="mean activity per neuron class across the recurrent timesteps" hidden></canvas>
+      <div class="brainviz-caption mono">
+        <span id="brain-caption">2,048 sampled neurons · real connectome positions</span>
+      </div>
+      <div class="legend mono" id="legend"></div>
+    </div>
+  </aside>
+
+  <section class="board-col">
+    <div class="board-head">
+      <div class="who mono" id="who-top"></div>
+    </div>
+    <div class="board-frame"><div id="board"></div></div>
+    <div class="board-foot">
+      <div class="who mono" id="who-bottom"></div>
+      <div class="status-wrap">
+        <div class="status" id="status" aria-live="polite">Your move.</div>
+        <button class="btn btn-small" id="btn-retry" type="button" hidden>Retry</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel side-panel">
+    <div class="party-bar" id="party-bar" hidden></div>
+    <div class="game-meta">
+      <div class="pill" id="diff-pill">Fly</div>
+      <div class="clock mono">
+        <div><span class="dim">last think</span> <b id="clk-last">—</b></div>
+        <div><span class="dim">total</span> <b id="clk-total">0.0 s</b></div>
+        <div><span class="dim">search</span> <b id="clk-sims">—</b></div>
+      </div>
+    </div>
+    <ol class="moves mono" id="moves" aria-label="move list"></ol>
+    <div class="actions">
+      <button class="btn" id="btn-undo" type="button">Undo</button>
+      <button class="btn" id="btn-flip" type="button">Flip</button>
+      <button class="btn" id="btn-pgn" type="button">Copy PGN</button>
+      <button class="btn btn-danger" id="btn-resign" type="button">Resign</button>
+      <button class="btn btn-primary" id="btn-new" type="button">New game</button>
+    </div>
+  </aside>
+</main>
+
+<!-- ============================== result ============================== -->
+<dialog class="modal result-modal" id="result-modal">
+  <form method="dialog" class="modal-body">
+    <p class="eyebrow mono" id="result-eyebrow">assay complete</p>
+    <h2 id="result-title">You beat the fly</h2>
+    <p class="dim" id="result-sub"></p>
+    <canvas class="share-card" id="share-canvas" width="1200" height="630" aria-label="share card"></canvas>
+    <div class="row wrap">
+      <button class="btn" type="button" id="btn-copy-image">Copy image</button>
+      <button class="btn" type="button" id="btn-download-image">Download PNG</button>
+      <button class="btn" type="button" id="btn-copy-text">Copy text</button>
+      <span class="hint mono" id="share-hint"></span>
+    </div>
+    <div class="row wrap result-actions">
+      <button class="btn btn-primary" type="button" id="btn-rematch">Play again</button>
+      <button class="btn" type="button" id="btn-next-player" hidden>Next player</button>
+      <button class="btn btn-ghost" type="submit">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============================== party ============================== -->
+<dialog class="modal" id="party-modal">
+  <form method="dialog" class="modal-body" id="party-form">
+    <p class="eyebrow mono">pass-and-play</p>
+    <h2>Party mode</h2>
+    <p class="dim">Everyone takes a turn against the same fly. Whoever beats it in the fewest moves wins the night; ties go to the faster player.</p>
+    <label class="field"><span class="field-label">Players, one per line</span>
+      <textarea class="input" id="party-names" rows="5" placeholder="Alice&#10;Bob&#10;Carlo"></textarea>
+    </label>
+    <div class="setup-inline">
+      <label class="field"><span class="field-label">Difficulty for everyone</span>
+        <select class="input" id="party-difficulty"><option value="larva">Larva</option><option value="fly" selected>Fly</option><option value="superfly">Superfly</option></select>
+      </label>
+      <label class="field"><span class="field-label">Colour</span>
+        <select class="input" id="party-color"><option value="white">Everyone white</option><option value="black">Everyone black</option><option value="random">Random</option></select>
+      </label>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" type="button" id="btn-party-start">Start the tournament</button>
+      <button class="btn btn-ghost" type="submit">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============================== leaderboard ============================== -->
+<dialog class="modal" id="leaderboard-modal">
+  <form method="dialog" class="modal-body">
+    <p class="eyebrow mono">this browser</p>
+    <h2>Leaderboard</h2>
+    <div class="table-wrap"><table class="table mono" id="leaderboard-table"></table></div>
+    <div class="row">
+      <button class="btn btn-ghost" type="button" id="btn-clear-board">Clear</button>
+      <button class="btn" type="submit">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============================== about ============================== -->
+<dialog class="modal" id="about-modal">
+  <form method="dialog" class="modal-body prose">
+    <p class="eyebrow mono">the science</p>
+    <h2>How a fly plays chess</h2>
+    <p>FlyWire mapped every neuron and synapse in the brain of an adult female <i>Drosophila melanogaster</i> from electron microscopy: about 139,000 neurons and tens of millions of synapses, with the neurotransmitter of most neurons predicted from images.</p>
+    <p>We turned that wiring diagram into a recurrent neural network. Each neuron is a unit; each synapse is a connection that exists <em>only</em> if the fly has it. Acetylcholine neurons excite, GABA and glutamate neurons inhibit (Dale's law), and those signs were never learned. What training changed: how strong each existing synapse is, each neuron's bias and time constant, and two small projections — the board is injected into ~2,000 sensory neurons, and the move is read out of ~2,000 descending and motor neurons.</p>
+    <p id="about-eyes" hidden></p>
+    <p>The board is presented for a few recurrent timesteps; the descending neurons' activity is decoded into a probability over moves (the policy) and a guess of who is winning (the value). The dots beside the board are 2,048 of those neurons, drawn where they sit in the real brain, glowing with their activity; after every fly move the <em>thought replay</em> scrubs through the timesteps so you can watch the wave travel from the eyes through the optic lobes into the central brain and down to the descending neurons.</p>
+    <p>It learned by imitating 57 million positions from about 780,000 human games on Lichess (both players rated 1800+). <b>Larva</b> samples the policy. <b>Fly</b> takes the policy's favourite move and checks it one ply ahead with the value head. <b>Superfly</b> runs a Monte-Carlo tree search (400 simulations per move on WebGPU, 40 in plain JavaScript) where every evaluation is the fly brain. Nothing else picks moves.</p>
+    <p class="dim">Data: FlyWire consortium, Dorkenwald et al. 2024 (<i>Nature</i>, doi:10.1038/s41586-024-07558-y) and Schlegel et al. 2024 (<i>Nature</i>, doi:10.1038/s41586-024-07686-5), CC BY-NC 4.0. Chess rules: chess.js (BSD-2). Code: MIT.</p>
+    <div class="row"><button class="btn" type="submit">Close</button></div>
+  </form>
+</dialog>
+
+<footer class="footer">
+  <p>Connectome: <a href="https://flywire.ai" rel="noopener">FlyWire</a> — Dorkenwald et al. 2024, <i>Nature</i> (<a href="https://doi.org/10.1038/s41586-024-07558-y" rel="noopener">10.1038/s41586-024-07558-y</a>); Schlegel et al. 2024, <i>Nature</i> (<a href="https://doi.org/10.1038/s41586-024-07686-5" rel="noopener">10.1038/s41586-024-07686-5</a>). Data CC BY-NC 4.0.</p>
+  <p>Chess rules by <a href="https://github.com/jhlywa/chess.js" rel="noopener">chess.js</a> (BSD-2). Piece and fly artwork drawn for this site. Source: <a href="https://github.com/cesp99/fly-chess" rel="noopener">github.com/cesp99/fly-chess</a>.</p>
+</footer>
+
+<div class="toast mono" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
